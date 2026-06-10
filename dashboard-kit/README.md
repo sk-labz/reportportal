@@ -3,6 +3,8 @@
 Provisions a consistent set of dashboards into ReportPortal projects via the
 REST API, so every team and stakeholder sees the same layout:
 
+**Standard dashboards** (every project):
+
 1. **Pass/Fail Trends & Launch Health** — overall stats, passing rate, trend
    over the last 30 launches, and a recent-launches table.
 2. **Failure & Defect Breakdown** — top failing tests, defect-type
@@ -11,7 +13,18 @@ REST API, so every team and stakeholder sees the same layout:
    `layer:`/`service:` attributes, and a `componentHealthCheck` widget
    grouped by `service`.
 
-An optional 4th dashboard, **Org Quality Overview**, is provisioned into
+**Extended dashboards** (every project, unless `extended_dashboards: false`):
+
+4. **Test Layer Breakdown** — `componentHealthCheck` grouped by the `layer`
+   attribute (api/ui/integration/unit), plus a recent-launches view.
+5. **Release / Sprint Report** — passing rate, defect summary, cumulative
+   trend, and a side-by-side comparison across the most recent
+   release-tagged launches (`version:`/`build:` attribute, see
+   `build_attribute_key`).
+6. **Duration & Flakiness Trends** — execution duration trend, test-case
+   growth trend, and a wider-window flaky-test view.
+
+An optional 7th dashboard, **Org Quality Overview**, is provisioned into
 "umbrella" projects (see below) for a cross-team rollup.
 
 ## Why per-project, not one global dashboard?
@@ -74,6 +87,19 @@ python3 provision_dashboards.py --project payments_checkout --mode team
 # Single umbrella project with per-team drill-down filters
 python3 provision_dashboards.py --project payments_overview --mode umbrella \
   --group-by-attribute team --teams checkout,fraud
+
+# Skip the Phase 2 extended dashboards for a project
+python3 provision_dashboards.py --project platform_search --no-extended-dashboards
+
+# This team tags releases with `build:<n>` instead of `version:`
+python3 provision_dashboards.py --project payments_fraud --build-attribute-key build
+
+# Create the project if it doesn't exist yet (VERIFY: see RPClient.create_project)
+python3 provision_dashboards.py --project new_team --create-project \
+  --project-description "New team test results"
+
+# Read-only audit: list existing filters/widgets/dashboards per project
+python3 provision_dashboards.py --list-existing
 ```
 
 After running, open each project's **Dashboards** tab in the RP UI — you
@@ -112,13 +138,21 @@ what to check. In summary, before relying on a real run:
 3. Confirm the `Widget` controller's `widgetType` enum includes
    `overallStatistics`, `passingRateSummary`, `statisticTrend`,
    `launchesTable`, `mostFailedTestCases`, `uniqueBugTable`,
-   `flakyTestCases`, and `componentHealthCheck`, and that
+   `flakyTestCases`, `componentHealthCheck`, `cumulative`,
+   `launchesComparisonChart`, `launchesDurationChart`, and `casesTrend`
+   (the last four are used by the Phase 2 extended dashboards), and that
    `contentParameters.widgetOptions` accepts the keys used in
-   `config/widgets/*.json` (`viewMode`, `latest`, `timeline`, `attributeKey`).
+   `config/widgets/*.json` (`viewMode`, `latest`, `timeline`, `attributeKey`,
+   `attributeKeys`).
 4. Confirm `statistics$defects$<type>$total` sub-type keys
    (`product_bug`/`automation_bug`/`system_issue`/`no_defect`/
    `to_investigate`) match your project's defect-type configuration
    (Project Settings → Defect Types) — these are customizable per project.
+5. If using `--create-project` / `create: true`, confirm the project
+   existence-check and creation endpoints/payload (`RPClient.project_exists`
+   / `RPClient.create_project`) against the `Project` controller.
+6. If using `configure_bts_jira.py` (see `docs/JIRA_INTEGRATION.md`), confirm
+   the `Integration` controller's path/payload for BTS plugins.
 
 If a `--dry-run` GET or a real run returns a 4xx, the script prints the
 response body verbatim — use that to correct the relevant template under
@@ -127,16 +161,24 @@ response body verbatim — use that to correct the relevant template under
 ## Layout
 
 ```
+docker-compose.sso.yml      # SAML SP entity ID overlay (see docs/SSO_SETUP.md)
+.github/workflows/
+  provision-dashboards.yml  # optional: auto-run this script on config/ changes
+
 dashboard-kit/
   provision_dashboards.py   # the script described above
+  configure_bts_jira.py     # optional Jira integration automation (see docs/JIRA_INTEGRATION.md)
   requirements.txt
   config/
     teams.example.yml       # copy to teams.yml and edit
+    jira.example.yml        # copy to jira.yml and edit (configure_bts_jira.py)
     filters/                # reusable saved filters (POST /v1/{project}/filter)
     widgets/                # widget definitions grouped by dashboard
     dashboards/             # dashboard name + ordered widget list
   ci-examples/               # GitHub Actions snippets for reporting into RP
   docs/
     SETUP_RUNBOOK.md
+    SSO_SETUP.md
+    JIRA_INTEGRATION.md
     PHASE2_ROADMAP.md
 ```

@@ -5,11 +5,14 @@
 # provision_dashboards.py. config/teams.yml is git-ignored on purpose so
 # real project keys/structure can stay company-internal if desired.
 #
-# project keys must already exist in ReportPortal (Admin -> Projects -> Add
-# Project) before this script is run -- see dashboard-kit/docs/SETUP_RUNBOOK.md.
+# By default, project keys must already exist in ReportPortal (Admin ->
+# Projects -> Add Project) before this script is run -- see
+# dashboard-kit/docs/SETUP_RUNBOOK.md. Set `create: true` to have the script
+# create the project automatically instead (VERIFY: see
+# RPClient.create_project in provision_dashboards.py).
 #
 # modes:
-#   team     - provisions the 3 standard dashboards (Pass/Fail Trends,
+#   team     - provisions the standard dashboards (Pass/Fail Trends,
 #              Failure & Defect Breakdown, Team/Project Comparison) into the
 #              project. This is the default for every team's own project.
 #   umbrella - additionally provisions the "Org Quality Overview" dashboard
@@ -17,16 +20,33 @@
 #              `group_by_attribute`. Use for an optional business-unit-level
 #              rollup project that teams also report into (see
 #              dashboard-kit/README.md "Umbrella projects").
+#
+# extended_dashboards (default: true):
+#   Also provisions the Phase 2 "extended" dashboards: Test Layer Breakdown,
+#   Release / Sprint Report, and Duration & Flakiness Trends. Set to `false`
+#   for a project that only wants the 3 standard dashboards.
+#
+# build_attribute_key (default: "version"):
+#   The launch attribute key (see ci-examples/ATTRIBUTES.md) used by the
+#   Release / Sprint Report dashboard to identify "release-tagged" launches.
+#   Override to "build" (or another key) if your CI uses a different
+#   convention for that project.
 
 projects:
   - key: payments_checkout
     mode: team
+    # extended_dashboards: true        # (default) also provision the Phase 2 dashboards
+    # build_attribute_key: version     # (default) attribute used by Release/Sprint Report
+    # create: true                     # create the project if it doesn't exist yet
+    # description: "Checkout team test results"
 
   - key: payments_fraud
     mode: team
 
   - key: platform_search
     mode: team
+    extended_dashboards: false   # this project only wants the 3 standard dashboards
+    build_attribute_key: build   # this team tags launches with `build:<n>` instead of `version:`
 
   # Optional: a business-unit rollup project. Teams listed under `teams:`
   # are expected to additionally report launches into this project tagged

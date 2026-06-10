@@ -1,0 +1,58 @@
+{
+  "_comment": "Extended dashboard: Duration & Flakiness Trends. VERIFY widgetType values 'launchesDurationChart' and 'casesTrend' (and their content fields) against GET /api/v1/{project}/widget on the target RP 5.15 instance -- these were not used in the Phase 1 dashboards and are based on RP's documented widget-type list, not a confirmed payload shape.",
+  "widgets": [
+    {
+      "name": "Launch Duration Trend",
+      "description": "Execution duration trend across the last 30 launches -- watch for creeping suite runtimes.",
+      "widgetType": "launchesDurationChart",
+      "filter": "Last 50 Launches",
+      "itemsCount": 30,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "startTime",
+          "endTime"
+        ],
+        "itemsCount": 30,
+        "widgetOptions": {
+          "timeline": "launch"
+        }
+      }
+    },
+    {
+      "name": "Test Case Growth Trend",
+      "description": "Total test-case count across the last 30 launches -- tracks automation coverage growth.",
+      "widgetType": "casesTrend",
+      "filter": "Last 50 Launches",
+      "itemsCount": 30,
+      "size": { "width": 6, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$executions$total"
+        ],
+        "itemsCount": 30,
+        "widgetOptions": {
+          "timeline": "launch"
+        }
+      }
+    },
+    {
+      "name": "Top Flaky Tests (last 30 launches)",
+      "description": "Test cases whose status flips most often between pass/fail across a wider 30-launch window.",
+      "widgetType": "flakyTestCases",
+      "filter": "Last 50 Launches",
+      "itemsCount": 30,
+      "size": { "width": 6, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "name",
+          "statistics$executions$total",
+          "statistics$executions$failed",
+          "statistics$executions$passed"
+        ],
+        "itemsCount": 30,
+        "widgetOptions": {}
+      }
+    }
+  ]
+}

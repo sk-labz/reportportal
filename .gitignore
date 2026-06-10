@@ -5,6 +5,8 @@
 tmp/
 
 # dashboard-kit: company-internal project/team mapping (copy from
-# config/teams.example.yml)
+# config/teams.example.yml) and Jira project mapping (copy from
+# config/jira.example.yml)
 dashboard-kit/config/teams.yml
+dashboard-kit/config/jira.yml
 acme.json

@@ -1,0 +1,52 @@
+# Example GitHub Actions workflow: report Robot Framework results
+# (integration/BDD-style suites) to ReportPortal.
+#
+# Prerequisites in the team's repo:
+#   - requirements include `robotframework-reportportal`
+#     https://github.com/reportportal/agent-Python-RobotFramework
+#
+# VERIFY: the listener import path (`robotframework_reportportal.listener`)
+# and the exact `RP_*` environment variable names / `RP_LAUNCH_ATTRIBUTES`
+# format against the robotframework-reportportal version pinned in
+# requirements.txt -- some versions expect attributes as
+# `key:value` pairs separated by `;`, others by whitespace.
+#
+# Repo secrets required (see ../ATTRIBUTES.md):
+#   RP_ENDPOINT, RP_API_KEY, RP_PROJECT
+#
+# Copy this file to .github/workflows/reportportal-tests.yml in the team's
+# repo and adjust `RP_LAUNCH`, attribute values, and the suite path.
+
+name: Integration Tests with ReportPortal (Robot Framework)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    env:
+      RP_ENDPOINT: ${{ secrets.RP_ENDPOINT }}
+      RP_API_KEY: ${{ secrets.RP_API_KEY }}
+      RP_PROJECT: ${{ secrets.RP_PROJECT }}
+      RP_LAUNCH: "Search Service - Integration Suite"
+      RP_LAUNCH_ATTRIBUTES: "team:search;layer:integration;service:search-svc"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install robotframework-reportportal
+
+      - name: Run integration suite
+        run: |
+          python -m robot \
+            --listener robotframework_reportportal.listener.listener \
+            tests/integration

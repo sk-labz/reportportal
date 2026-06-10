@@ -8,8 +8,9 @@ also be useful for Jira linkage in Phase 2.
 | Attribute key | Required | Example values                  | Used by                                   |
 |---------------|----------|----------------------------------|--------------------------------------------|
 | `team`        | yes      | `checkout`, `search`, `fraud`    | Umbrella "Org Quality Overview" grouping    |
-| `layer`       | yes      | `api`, `ui`, `integration`, `unit` | Filtering/segmentation within a project   |
+| `layer`       | yes      | `api`, `ui`, `integration`, `unit` | "Test Layer Breakdown" `componentHealthCheck`, filtering/segmentation within a project |
 | `service`     | recommended | `checkout-api`, `checkout-web` | "Team / Project Comparison" `componentHealthCheck` |
+| `version` (or `build`) | optional | `2026.06.1`, `build:4821` | "Release / Sprint Report" dashboard |
 
 Rules of thumb:
 - Keys and values: lowercase, no spaces, hyphen-separated if multi-word
@@ -19,6 +20,33 @@ Rules of thumb:
   filter (`Team: <name>`) lines up.
 - `layer` should be one of `api | ui | integration | unit` to keep the
   convention consistent across dashboards company-wide.
+- `version`/`build` is optional but unlocks the **Release / Sprint Report**
+  dashboard (`dashboard-kit/config/dashboards/dashboard_release_sprint_report.json`),
+  which scopes its widgets to the most recent launches carrying this
+  attribute. Use whichever key matches your release process (`version:2026.06.1`
+  for versioned releases, `build:4821` for CI build numbers); set the
+  matching `build_attribute_key` in `config/teams.yml` for that project (see
+  `config/teams.example.yml`).
+
+## Onboarded frameworks
+
+| Framework                  | Layer(s)              | Example workflow                              |
+|-----------------------------|------------------------|-----------------------------------------------|
+| JUnit5 (Maven)              | unit / integration     | `java-junit5-reportportal.yml`                |
+| TestNG (Maven)              | ui / integration       | `java-testng-reportportal.yml`                |
+| pytest                      | unit                    | `python-pytest-reportportal.yml`              |
+| Jest                        | unit                    | `js-jest-reportportal.yml`                    |
+| Cypress                     | ui                      | `js-cypress-reportportal.yml`                 |
+| Postman / Newman            | api                     | `postman-newman-reportportal.yml`             |
+| Playwright                  | ui                      | `playwright-reportportal.yml`                 |
+| .NET (NUnit)                | unit / integration      | `dotnet-nunit-reportportal.yml`               |
+| Robot Framework             | integration             | `robotframework-reportportal.yml`             |
+
+Don't see your framework? Check the [ReportPortal agents list](https://github.com/reportportal?q=agent-) —
+most follow the same pattern: install the agent, configure
+endpoint/token/project/launch + the `team`/`layer`/`service` (and optionally
+`version`/`build`) attributes per this convention, and add the secrets from
+the table below.
 
 ## Repository secrets every onboarded repo needs
 

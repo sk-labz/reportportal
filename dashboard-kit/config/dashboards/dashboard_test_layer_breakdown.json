@@ -1,0 +1,8 @@
+{
+  "name": "Test Layer Breakdown",
+  "description": "Pass/fail health grouped by test layer (api/ui/integration/unit) via the 'layer' launch attribute, plus a recent-launches view for spotting coverage gaps.",
+  "widgets": [
+    "Test Layer Health",
+    "Recent Launches by Layer"
+  ]
+}

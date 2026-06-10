@@ -1,0 +1,65 @@
+# Example GitHub Actions workflow: report .NET NUnit results to ReportPortal.
+#
+# Prerequisites in the team's repo:
+#   - Test project references the `ReportPortal.NUnitExtension` NuGet package
+#     https://github.com/reportportal/agent-net-nunit
+#   - A `ReportPortal.config.json` next to the test assembly (generated below)
+#
+# VERIFY: ReportPortal.config.json schema (`server.url`/`server.project`/
+# `server.authentication.uuid` vs `server.authentication.apiKey` -- newer
+# agent-net versions use an API key) and the `launch.attributes` array shape
+# against the ReportPortal.NUnitExtension version referenced in the test
+# project's .csproj.
+#
+# Repo secrets required (see ../ATTRIBUTES.md):
+#   RP_ENDPOINT, RP_API_KEY, RP_PROJECT
+#
+# Copy this file to .github/workflows/reportportal-tests.yml in the team's
+# repo and adjust `launch.name`, attribute values, project/test paths.
+
+name: Tests with ReportPortal (.NET NUnit)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - run: dotnet restore
+
+      - run: dotnet build --no-restore -c Release
+
+      - name: Configure ReportPortal
+        run: |
+          cat > tests/MyProject.Tests/ReportPortal.config.json <<EOF
+          {
+            "enabled": true,
+            "server": {
+              "url": "${{ secrets.RP_ENDPOINT }}",
+              "project": "${{ secrets.RP_PROJECT }}",
+              "authentication": {
+                "apiKey": "${{ secrets.RP_API_KEY }}"
+              }
+            },
+            "launch": {
+              "name": "Order Service - .NET Unit Tests",
+              "attributes": [
+                { "key": "team", "value": "fraud" },
+                { "key": "layer", "value": "unit" },
+                { "key": "service", "value": "order-service" }
+              ]
+            }
+          }
+          EOF
+
+      - name: Run tests
+        run: dotnet test --no-build -c Release tests/MyProject.Tests

@@ -1,0 +1,48 @@
+{
+  "_comment": "Extended dashboard: Test Layer Breakdown. Groups results by the 'layer' launch attribute (api/ui/integration/unit) -- see ci-examples/ATTRIBUTES.md. VERIFY 'componentHealthCheck' widgetType/widgetOptions per the comments in team_project_comparison.json.",
+  "widgets": [
+    {
+      "name": "Test Layer Health",
+      "description": "Pass/fail breakdown grouped by the 'layer' launch attribute (api/ui/integration/unit).",
+      "widgetType": "componentHealthCheck",
+      "filter": "Last 50 Launches",
+      "itemsCount": 50,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$executions$total",
+          "statistics$executions$passed",
+          "statistics$executions$failed"
+        ],
+        "itemsCount": 50,
+        "widgetOptions": {
+          "attributeKey": "layer",
+          "viewMode": "panel"
+        }
+      }
+    },
+    {
+      "name": "Recent Launches by Layer",
+      "description": "Most recent launches with their layer/service attributes visible, for spotting coverage gaps between API/UI/integration/unit suites.",
+      "widgetType": "launchesTable",
+      "filter": "Last 50 Launches",
+      "itemsCount": 20,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "name",
+          "number",
+          "startTime",
+          "status",
+          "attributes",
+          "statistics$executions$total",
+          "statistics$executions$passed",
+          "statistics$executions$failed",
+          "statistics$executions$skipped"
+        ],
+        "itemsCount": 20,
+        "widgetOptions": {}
+      }
+    }
+  ]
+}

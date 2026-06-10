@@ -1,10 +1,12 @@
-# ReportPortal Setup Runbook — Phase 1 (hosted instance + dashboard kit + CI)
+# ReportPortal Setup Runbook — hosted instance + dashboard kit + CI
 
 This runbook sequences everything needed to go from "nothing deployed" to
 "stakeholders have dashboards and teams' CI is reporting into them," using
-the files in this repo. SSO, Jira integration, and cleanup of pre-existing
-dashboards are intentionally **out of scope** here — see
-[`PHASE2_ROADMAP.md`](PHASE2_ROADMAP.md).
+the files in this repo. SSO and Jira integration have their own runbooks
+once the instance is up — see
+[`SSO_SETUP.md`](SSO_SETUP.md) and [`JIRA_INTEGRATION.md`](JIRA_INTEGRATION.md).
+[`PHASE2_ROADMAP.md`](PHASE2_ROADMAP.md) tracks what's implemented vs. what
+still needs your IdP/Jira specifics, plus future dashboard-cleanup tooling.
 
 ## 1. Prerequisites
 
@@ -90,6 +92,11 @@ per the convention `<businessunit>_<team>` (e.g. `payments_checkout`,
 project per business unit (e.g. `payments_overview`) — see
 `../README.md` → "Why per-project, not one global dashboard?".
 
+Alternatively, set `create: true` on a project's entry in `config/teams.yml`
+(step 5) and let `provision_dashboards.py` create it for you — see the ⚠️
+VERIFY note on `RPClient.create_project` in `../provision_dashboards.py`
+before relying on this for a real rollout.
+
 ## 5. Provision the dashboard kit
 
 ```bash
@@ -107,25 +114,46 @@ python3 provision_dashboards.py --dry-run   # review the planned calls
 python3 provision_dashboards.py             # apply
 ```
 
+By default every project gets the **3 standard dashboards** (Pass/Fail
+Trends, Failure & Defect Breakdown, Team/Project Comparison) plus the **3
+extended dashboards** (Test Layer Breakdown, Release/Sprint Report, Duration
+& Flakiness Trends). Set `extended_dashboards: false` per project in
+`config/teams.yml` to opt a project out of the extended set, and
+`build_attribute_key` if a project tags releases with something other than
+`version:` (e.g. `build:`) — see `config/teams.example.yml`.
+
 Verify: open each project's **Dashboards** tab and confirm the dashboards
 listed in `../README.md` are present (widgets will show "no data" until step
-6 produces launches).
+6 produces launches). Use `python3 provision_dashboards.py --list-existing`
+at any time for a read-only audit of what's currently provisioned per
+project.
 
 > Before this step, read `../README.md` → "⚠️ Before your first non-dry-run
 > execution: VERIFY field names" — RP REST contracts can shift between minor
 > versions, and the script surfaces 4xx bodies verbatim to help you fix any
 > mismatched template quickly.
 
+### 5a. Optional: automate provisioning via GitHub Actions
+
+`.github/workflows/provision-dashboards.yml` (repo root) runs
+`provision_dashboards.py --dry-run` on PRs touching `dashboard-kit/config/**`
+and the real run on push to the default branch. It's skipped (with a notice)
+until you set the `RP_API_URL`/`RP_API_TOKEN` repo secrets, and needs
+`config/teams.yml` to be available in CI (it's git-ignored by default — see
+the comments at the top of that workflow file for options).
+
 ## 6. Onboard each team's CI (GitHub Actions)
 
 For each team:
 
 1. Copy the relevant template from `../ci-examples/` into that repo's
-   `.github/workflows/`.
+   `.github/workflows/` — covers JUnit5, TestNG, pytest, Jest, Cypress,
+   Postman/Newman, Playwright, .NET NUnit, and Robot Framework (see
+   `../ci-examples/ATTRIBUTES.md` for the full list).
 2. Add repo secrets: `RP_ENDPOINT`, `RP_API_KEY` (a project- or
    service-account API token), `RP_PROJECT` (the project key from step 4).
-3. Set `RP_LAUNCH` and the `team`/`layer`/`service` attributes per
-   `../ci-examples/ATTRIBUTES.md`.
+3. Set `RP_LAUNCH` and the `team`/`layer`/`service` (and optionally
+   `version`/`build`) attributes per `../ci-examples/ATTRIBUTES.md`.
 4. Push/run the workflow, then confirm in the RP UI:
    - The launch appears under the right project with the expected attributes.
    - The dashboards from step 5 start populating (Overall Statistics, Recent
@@ -138,6 +166,9 @@ services.
 
 ## 7. What's next
 
-Once dashboards are live and CI is reporting consistently, proceed to
-[`PHASE2_ROADMAP.md`](PHASE2_ROADMAP.md) for SSO, Jira integration, and
-dashboard cleanup tooling for any pre-existing instances.
+Once dashboards are live and CI is reporting consistently:
+
+- [`SSO_SETUP.md`](SSO_SETUP.md) — configure SAML/LDAP/Active Directory.
+- [`JIRA_INTEGRATION.md`](JIRA_INTEGRATION.md) — link failures to Jira issues.
+- [`PHASE2_ROADMAP.md`](PHASE2_ROADMAP.md) — overall status tracker and
+  future dashboard-cleanup tooling for any pre-existing instances.

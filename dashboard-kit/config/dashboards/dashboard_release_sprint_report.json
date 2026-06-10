@@ -1,0 +1,10 @@
+{
+  "name": "Release / Sprint Report",
+  "description": "Aggregated view of the most recent release-tagged launches: passing rate, defect summary, cumulative trend, and a side-by-side comparison across releases.",
+  "widgets": [
+    "Release Passing Rate",
+    "Release Defect Summary",
+    "Cumulative Release Trend",
+    "Release Comparison"
+  ]
+}

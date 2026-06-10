@@ -1,0 +1,37 @@
+# dashboard-kit/config/jira.yml
+#
+# Per-project Jira (BTS) integration mapping for configure_bts_jira.py.
+# Copy this file to config/jira.yml and fill in real values -- it's
+# git-ignored like teams.yml since it documents internal Jira project keys
+# and (env var names for) credentials.
+#
+# See dashboard-kit/docs/JIRA_INTEGRATION.md for the full setup process and
+# the mapping table this file encodes. ⚠️ The exact API payload
+# configure_bts_jira.py sends is UNVERIFIED against a live RP 5.15 instance
+# -- use --dry-run first (see JIRA_INTEGRATION.md section 6).
+#
+# Credentials are referenced by environment variable name, not stored here.
+# Export the referenced env vars before running configure_bts_jira.py, e.g.:
+#   export JIRA_CHECKOUT_API_TOKEN=...
+
+projects:
+  - key: payments_checkout
+    bts_url: https://example.atlassian.net
+    bts_project: CHK
+    auth_type: cloud          # cloud | server
+    email: jira-bot@example.com
+    api_token_env: JIRA_CHECKOUT_API_TOKEN
+
+  - key: payments_fraud
+    bts_url: https://example.atlassian.net
+    bts_project: FRD
+    auth_type: cloud
+    email: jira-bot@example.com
+    api_token_env: JIRA_FRAUD_API_TOKEN
+
+  - key: platform_search
+    bts_url: https://jira.example.com
+    bts_project: SRCH
+    auth_type: server          # Basic auth: username + password/token
+    username: jira-bot
+    password_env: JIRA_SEARCH_PASSWORD

@@ -1,0 +1,71 @@
+# Auto-runs dashboard-kit/provision_dashboards.py against your ReportPortal
+# instance when dashboard configuration changes.
+#
+# - On pull requests touching dashboard-kit/config/**: runs --dry-run and
+#   leaves the output in the job log for review.
+# - On push to the default branch: runs for real (creates/updates
+#   filters/widgets/dashboards).
+#
+# Both modes are skipped (with a notice, not a failure) if the
+# RP_API_URL / RP_API_TOKEN repository secrets aren't set yet -- see
+# dashboard-kit/docs/SETUP_RUNBOOK.md step 5.
+#
+# ⚠️ Two things to set up before this workflow does anything:
+#
+# 1. Repo secrets: RP_API_URL (e.g. https://<RP_DOMAIN>/api) and
+#    RP_API_TOKEN. The instance must be reachable from GitHub-hosted
+#    runners -- if it's on a private network, use a self-hosted runner
+#    instead, or run provision_dashboards.py manually per
+#    dashboard-kit/README.md.
+#
+# 2. config/teams.yml: this file is git-ignored (see dashboard-kit/README.md
+#    -- it documents internal project/team structure). For this workflow to
+#    have something to provision, either:
+#      a) commit a `dashboard-kit/config/teams.yml` for this repo (remove it
+#         from .gitignore if your team/project structure isn't sensitive), or
+#      b) write it from a repo secret/variable in an extra step before
+#         running provision_dashboards.py, e.g.:
+#           - run: echo "$TEAMS_YML" > dashboard-kit/config/teams.yml
+#             env:
+#               TEAMS_YML: ${{ secrets.RP_TEAMS_YML }}
+
+name: Provision ReportPortal Dashboards
+
+on:
+  pull_request:
+    paths:
+      - "dashboard-kit/config/**"
+      - "dashboard-kit/provision_dashboards.py"
+  push:
+    branches: [master, main]
+    paths:
+      - "dashboard-kit/config/**"
+      - "dashboard-kit/provision_dashboards.py"
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    env:
+      RP_API_URL: ${{ secrets.RP_API_URL }}
+      RP_API_TOKEN: ${{ secrets.RP_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r dashboard-kit/requirements.txt
+
+      - name: Skip notice (secrets not configured)
+        if: env.RP_API_URL == '' || env.RP_API_TOKEN == ''
+        run: |
+          echo "::notice::RP_API_URL/RP_API_TOKEN repo secrets are not set - skipping dashboard provisioning. See dashboard-kit/docs/SETUP_RUNBOOK.md step 5."
+
+      - name: Dry run (pull request)
+        if: github.event_name == 'pull_request' && env.RP_API_URL != '' && env.RP_API_TOKEN != ''
+        run: python3 dashboard-kit/provision_dashboards.py --dry-run
+
+      - name: Provision (push to default branch)
+        if: github.event_name == 'push' && env.RP_API_URL != '' && env.RP_API_TOKEN != ''
+        run: python3 dashboard-kit/provision_dashboards.py

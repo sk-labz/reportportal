@@ -1,0 +1,44 @@
+# ReportPortal — SSO overlay
+#
+# Adds the one piece of SSO configuration that IS environment-driven: the
+# SAML Service Provider entity ID for the `uat` (service-authorization)
+# service. Everything else -- SAML IdP metadata, LDAP/Active Directory
+# connection details, OAuth/OIDC providers (Okta, Azure AD, Google
+# Workspace, GitHub, etc.) -- is configured through the ReportPortal Admin
+# UI (Administrate -> Authorization Configuration), persisted to the
+# database, NOT via compose/env vars. See dashboard-kit/docs/SSO_SETUP.md
+# for the full step-by-step.
+#
+# Usage (stack with TLS already applied via docker-compose.prod.yml):
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.prod.yml \
+#     -f docker-compose.sso.yml \
+#     --profile core up -d
+#
+# `environment` is a mapping-type field: Compose merges it at the key level,
+# so only the new key needs to be listed here.
+
+services:
+  uat:
+    environment:
+      ## SAML Service Provider entity ID. Defaults to a value derived from
+      ## the SP metadata URL
+      ## (https://<RP_DOMAIN>/uat/saml/sp/SSO/alias/report-portal-sp) if
+      ## unset; setting it explicitly to your domain gives IdP admins a
+      ## stable, human-readable identifier to register.
+      ## VERIFY against your ReportPortal version's SAML docs:
+      ## https://reportportal.io/docs/reportportal-configuration/authorization/SAMLProvider/
+      RP_AUTH_SAML_ENTITYID: https://${RP_DOMAIN}
+
+      ## Already set in the base docker-compose.yml (RP_SAML_SESSION-LIVE:
+      ## 4320 minutes / 3 days) -- repeated here only as a reminder that this
+      ## value is hardcoded in application.yaml for some RP versions and may
+      ## not be configurable via env var at all. VERIFY before relying on a
+      ## different session length.
+      # RP_SAML_SESSION-LIVE: 4320
+
+# NOTE: LDAP / Active Directory / OAuth providers do not have a compose
+# overlay because ReportPortal stores their configuration in the database via
+# the Admin UI's Authorization Configuration screen, not via environment
+# variables. No `uat` restart is required after configuring them there.

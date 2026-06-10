@@ -1,0 +1,80 @@
+{
+  "_comment": "Extended dashboard: Release / Sprint Report. All widgets are scoped to the 'Recent Releases ({{BUILD_ATTRIBUTE_KEY}})' filter (see filters/filter_by_build_attribute.json), i.e. the last 10 launches that carry a '{{BUILD_ATTRIBUTE_KEY}}' attribute (default key: 'version'). VERIFY widgetType values 'cumulative' and 'launchesComparisonChart' (and their widgetOptions, e.g. grouping/labeling by attribute) against GET /api/v1/{project}/widget on the target RP 5.15 instance -- these were not used in the Phase 1 dashboards and are based on RP's documented widget-type list, not a confirmed payload shape.",
+  "widgets": [
+    {
+      "name": "Release Passing Rate",
+      "description": "Passing-rate gauge across the most recent release-tagged launches.",
+      "widgetType": "passingRateSummary",
+      "filter": "Recent Releases ({{BUILD_ATTRIBUTE_KEY}})",
+      "itemsCount": 1,
+      "size": { "width": 6, "height": 7 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$executions$passed",
+          "statistics$executions$total"
+        ],
+        "itemsCount": 1,
+        "widgetOptions": {
+          "viewMode": "panel"
+        }
+      }
+    },
+    {
+      "name": "Release Defect Summary",
+      "description": "Defect-type breakdown for the most recent release-tagged launches.",
+      "widgetType": "uniqueBugTable",
+      "filter": "Recent Releases ({{BUILD_ATTRIBUTE_KEY}})",
+      "itemsCount": 10,
+      "size": { "width": 6, "height": 7 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$defects$product_bug$total",
+          "statistics$defects$automation_bug$total",
+          "statistics$defects$system_issue$total",
+          "statistics$defects$no_defect$total",
+          "statistics$defects$to_investigate$total"
+        ],
+        "itemsCount": 10,
+        "widgetOptions": {}
+      }
+    },
+    {
+      "name": "Cumulative Release Trend",
+      "description": "Cumulative pass/fail trend across recent releases, labeled by the '{{BUILD_ATTRIBUTE_KEY}}' attribute.",
+      "widgetType": "cumulative",
+      "filter": "Recent Releases ({{BUILD_ATTRIBUTE_KEY}})",
+      "itemsCount": 10,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$executions$total",
+          "statistics$executions$passed",
+          "statistics$executions$failed",
+          "statistics$executions$skipped"
+        ],
+        "itemsCount": 10,
+        "widgetOptions": {
+          "attributeKeys": ["{{BUILD_ATTRIBUTE_KEY}}"]
+        }
+      }
+    },
+    {
+      "name": "Release Comparison",
+      "description": "Side-by-side statistics comparison across recent release-tagged launches.",
+      "widgetType": "launchesComparisonChart",
+      "filter": "Recent Releases ({{BUILD_ATTRIBUTE_KEY}})",
+      "itemsCount": 10,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$executions$total",
+          "statistics$executions$passed",
+          "statistics$executions$failed",
+          "statistics$executions$skipped"
+        ],
+        "itemsCount": 10,
+        "widgetOptions": {}
+      }
+    }
+  ]
+}

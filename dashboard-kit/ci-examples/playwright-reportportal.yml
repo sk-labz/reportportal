@@ -1,0 +1,66 @@
+# Example GitHub Actions workflow: report Playwright (UI/E2E) results to
+# ReportPortal.
+#
+# Prerequisites in the team's repo:
+#   - package.json depends on `@reportportal/agent-js-playwright`
+#     https://github.com/reportportal/agent-js-playwright
+#   - playwright.config.ts (or .js) registers the reporter, reading config
+#     from env vars set below, e.g.:
+#
+#       export default defineConfig({
+#         reporter: [
+#           ['list'],
+#           ['@reportportal/agent-js-playwright', {
+#             apiKey: process.env.RP_API_KEY,
+#             endpoint: process.env.RP_ENDPOINT,
+#             project: process.env.RP_PROJECT,
+#             launch: process.env.RP_LAUNCH,
+#             attributes: [
+#               { key: 'team', value: 'checkout' },
+#               { key: 'layer', value: 'ui' },
+#               { key: 'service', value: 'checkout-web' },
+#             ],
+#           }],
+#         ],
+#       });
+#
+# VERIFY: the reporter option keys (`apiKey` vs `token`) and `attributes`
+# array shape against the @reportportal/agent-js-playwright version pinned
+# in package.json.
+#
+# Repo secrets required (see ../ATTRIBUTES.md):
+#   RP_ENDPOINT, RP_API_KEY, RP_PROJECT
+#
+# Copy this file to .github/workflows/reportportal-tests.yml in the team's
+# repo and adjust `RP_LAUNCH` and the attribute values in playwright.config.ts.
+
+name: UI Regression with ReportPortal (Playwright)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      RP_ENDPOINT: ${{ secrets.RP_ENDPOINT }}
+      RP_API_KEY: ${{ secrets.RP_API_KEY }}
+      RP_PROJECT: ${{ secrets.RP_PROJECT }}
+      RP_LAUNCH: "Checkout - Playwright UI Regression"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: npx playwright test

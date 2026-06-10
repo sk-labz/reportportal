@@ -1,0 +1,64 @@
+# Example GitHub Actions workflow: report Postman/Newman API test results to
+# ReportPortal.
+#
+# Prerequisites in the team's repo:
+#   - devDependencies include `newman` and `@reportportal/agent-js-postman`
+#     https://github.com/reportportal/agent-js-postman
+#
+# VERIFY: agent-js-postman's exact reporter option keys (`apiKey` vs `token`)
+# and how it expects `attributes` (array of {key,value} vs a flat object) --
+# confirm against the version pinned in package.json. The example below
+# generates a JSON config file and points Newman's reporter at it via
+# `--reporter-reportportal-config`, which is the documented pattern for
+# recent agent-js-postman versions; older versions may instead read
+# individual `--reporter-reportportal-*` CLI flags.
+#
+# Repo secrets required (see ../ATTRIBUTES.md):
+#   RP_ENDPOINT, RP_API_KEY, RP_PROJECT
+#
+# Copy this file to .github/workflows/reportportal-tests.yml in the team's
+# repo and adjust `RP_LAUNCH`, attribute values, and the collection/environment paths.
+
+name: API Tests with ReportPortal (Postman/Newman)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Configure ReportPortal reporter
+        run: |
+          cat > rp.config.json <<EOF
+          {
+            "endpoint": "${{ secrets.RP_ENDPOINT }}",
+            "apiKey": "${{ secrets.RP_API_KEY }}",
+            "project": "${{ secrets.RP_PROJECT }}",
+            "launch": "Checkout API - Postman Suite",
+            "attributes": [
+              { "key": "team", "value": "checkout" },
+              { "key": "layer", "value": "api" },
+              { "key": "service", "value": "checkout-api" }
+            ],
+            "description": "Postman/Newman API regression suite"
+          }
+          EOF
+
+      - name: Run Postman collection
+        run: |
+          npx newman run postman/collection.json \
+            -e postman/environment.json \
+            -r @reportportal/agent-js-postman \
+            --reporter-reportportal-config rp.config.json

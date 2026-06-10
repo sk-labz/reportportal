@@ -1,0 +1,9 @@
+{
+  "name": "Duration & Flakiness Trends",
+  "description": "Execution duration trend, test-case growth trend, and a wider-window flaky-test view for spotting suite health issues over time.",
+  "widgets": [
+    "Launch Duration Trend",
+    "Test Case Growth Trend",
+    "Top Flaky Tests (last 30 launches)"
+  ]
+}
