@@ -1,0 +1,60 @@
+# Example GitHub Actions workflow: report JUnit5 (Maven) results to ReportPortal.
+#
+# Prerequisites in the team's repo:
+#   - pom.xml depends on:
+#       com.epam.reportportal:agent-java-junit5
+#       com.epam.reportportal:logger-java-log4j (or logback/slf4j variant, optional)
+#   - JUnit5 platform configured to use the ReportPortal extension
+#     (com.epam.reportportal.junit5.ReportPortalExtension), per
+#     https://github.com/reportportal/agent-java-junit5
+#
+# Repo secrets required (see ../ATTRIBUTES.md):
+#   RP_ENDPOINT, RP_API_KEY, RP_PROJECT
+#
+# Copy this file to .github/workflows/reportportal-tests.yml in the team's
+# repo and adjust `RP_LAUNCH`, `team`/`layer`/`service` attribute values, and
+# the build command for your project layout.
+
+name: Tests with ReportPortal (JUnit5)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # ReportPortal client-java reads its config from
+      # src/test/resources/reportportal.properties. Generating it here keeps
+      # secrets out of the repo while letting the agent pick it up normally.
+      #
+      # VERIFY: property names against the client-java version pinned in
+      # pom.xml -- newer versions use `rp.api.key`, older use `rp.uuid`.
+      # `rp.attributes` format below (`key:value;key2:value2`) should also be
+      # confirmed against agent-java-junit5's current README.
+      - name: Configure ReportPortal
+        run: |
+          mkdir -p src/test/resources
+          cat > src/test/resources/reportportal.properties <<EOF
+          rp.endpoint=${{ secrets.RP_ENDPOINT }}
+          rp.api.key=${{ secrets.RP_API_KEY }}
+          rp.project=${{ secrets.RP_PROJECT }}
+          rp.launch=Checkout API - Integration Tests
+          rp.attributes=team:checkout;layer:integration;service:checkout-api
+          rp.enable=true
+          rp.convertimage=true
+          rp.batch.size.logs=20
+          EOF
+
+      - name: Run tests
+        run: mvn -B test

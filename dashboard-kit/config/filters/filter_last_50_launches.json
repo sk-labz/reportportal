@@ -1,0 +1,18 @@
+{
+  "_comment": "VERIFY before first run: filter shape against POST /api/v1/{project}/filter on the target RP 5.15 instance (Admin -> API docs / Swagger UI at https://<RP_DOMAIN>/api/). The 'any' condition with an empty value is used here as a permissive 'match everything' clause so this filter simply returns the most recent launches in start-time order.",
+  "name": "Last 50 Launches",
+  "description": "Most recent launches in this project, regardless of status. Used as the base filter for overview/trend widgets.",
+  "type": "Launch",
+  "entities": [
+    {
+      "filteringField": "name",
+      "condition": "any",
+      "value": ""
+    }
+  ],
+  "selectionParameters": {
+    "orders": [
+      { "sortingColumn": "startTime", "isAsc": false }
+    ]
+  }
+}

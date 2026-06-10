@@ -1,0 +1,47 @@
+{
+  "_comment": "Dashboard 3: Per-Team/Project Comparison (within a single project). VERIFY 'componentHealthCheck' widgetType and its 'widgetOptions.attributeKey' field name against GET /api/v1/{project}/widget on the target RP 5.15 instance. This widget groups results by the CI-supplied launch attribute named here (default: 'service') -- see dashboard-kit/ci-examples/ATTRIBUTES.md for the tagging convention (team:/layer:/service:). Swap attributeKey to 'layer' or 'team' if a project prefers grouping by test layer or by sub-team instead of service.",
+  "widgets": [
+    {
+      "name": "Recent Launches by Attribute",
+      "description": "Most recent launches with their team/layer/service attributes visible for quick comparison.",
+      "widgetType": "launchesTable",
+      "filter": "Last 50 Launches",
+      "itemsCount": 20,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "name",
+          "number",
+          "startTime",
+          "status",
+          "attributes",
+          "statistics$executions$total",
+          "statistics$executions$passed",
+          "statistics$executions$failed"
+        ],
+        "itemsCount": 20,
+        "widgetOptions": {}
+      }
+    },
+    {
+      "name": "Component Health by Service",
+      "description": "Pass/fail breakdown grouped by the 'service' launch attribute, for comparing sub-teams/components within this project.",
+      "widgetType": "componentHealthCheck",
+      "filter": "Last 50 Launches",
+      "itemsCount": 50,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$executions$total",
+          "statistics$executions$passed",
+          "statistics$executions$failed"
+        ],
+        "itemsCount": 50,
+        "widgetOptions": {
+          "attributeKey": "service",
+          "viewMode": "panel"
+        }
+      }
+    }
+  ]
+}

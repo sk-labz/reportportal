@@ -1,0 +1,59 @@
+{
+  "_comment": "Dashboard 2: Failure & Defect Breakdown. VERIFY widgetType enum values (especially 'mostFailedTestCases' vs 'topTestCases', and 'flakyTestCases') and the 'statistics$defects$<type>$total' content field tokens (defect type locators -- product_bug/automation_bug/system_issue/no_defect/to_investigate -- are project-configurable, so confirm the exact sub-type keys via GET /api/v1/{project}/settings) against the target RP 5.15 instance before first run.",
+  "widgets": [
+    {
+      "name": "Top Failed Test Cases",
+      "description": "Test cases that fail most often across recent launches with failures.",
+      "widgetType": "mostFailedTestCases",
+      "filter": "Launches With Failures (recent)",
+      "itemsCount": 10,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "name",
+          "statistics$executions$total",
+          "statistics$executions$failed"
+        ],
+        "itemsCount": 10,
+        "widgetOptions": {}
+      }
+    },
+    {
+      "name": "Defect Type Breakdown",
+      "description": "Failures grouped by defect classification (product bug, automation bug, system issue, to investigate, no defect).",
+      "widgetType": "uniqueBugTable",
+      "filter": "Launches With Failures (recent)",
+      "itemsCount": 20,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$defects$product_bug$total",
+          "statistics$defects$automation_bug$total",
+          "statistics$defects$system_issue$total",
+          "statistics$defects$no_defect$total",
+          "statistics$defects$to_investigate$total"
+        ],
+        "itemsCount": 20,
+        "widgetOptions": {}
+      }
+    },
+    {
+      "name": "Flaky Test Cases",
+      "description": "Top 10 test cases whose status flips between pass/fail across recent launches.",
+      "widgetType": "flakyTestCases",
+      "filter": "Last 50 Launches",
+      "itemsCount": 10,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "name",
+          "statistics$executions$total",
+          "statistics$executions$failed",
+          "statistics$executions$passed"
+        ],
+        "itemsCount": 10,
+        "widgetOptions": {}
+      }
+    }
+  ]
+}

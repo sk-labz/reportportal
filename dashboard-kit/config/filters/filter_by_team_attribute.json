@@ -1,0 +1,18 @@
+{
+  "_comment": "UMBRELLA PROJECTS ONLY. VERIFY before first run: the attribute filteringField/condition pairing ('compositeAttribute' + 'has' with value 'key:value') against POST /api/v1/{project}/filter on the target RP 5.15 instance -- some versions expose separate 'attributeKey'/'attributeValue' fields instead of a single composite token. {{TEAM}} is substituted by provision_dashboards.py from config/teams.yml.",
+  "name": "Team: {{TEAM}}",
+  "description": "Launches (from any reporting project copied into this umbrella project) tagged with attribute team:{{TEAM}}.",
+  "type": "Launch",
+  "entities": [
+    {
+      "filteringField": "compositeAttribute",
+      "condition": "has",
+      "value": "team:{{TEAM}}"
+    }
+  ],
+  "selectionParameters": {
+    "orders": [
+      { "sortingColumn": "startTime", "isAsc": false }
+    ]
+  }
+}

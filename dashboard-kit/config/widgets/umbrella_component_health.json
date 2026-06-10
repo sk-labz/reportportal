@@ -1,0 +1,45 @@
+{
+  "_comment": "UMBRELLA PROJECTS ONLY (provisioned when a project's mode is 'umbrella' in config/teams.yml). {{GROUP_BY_ATTRIBUTE}} is substituted from that project's 'group_by_attribute' (e.g. 'team'). Requires teams to additionally report (or copy) launches into this project tagged per dashboard-kit/ci-examples/ATTRIBUTES.md. VERIFY widgetType/widgetOptions field names per the comments in team_project_comparison.json and overall_pass_fail_trends.json.",
+  "widgets": [
+    {
+      "name": "Team Health Overview",
+      "description": "Cross-team pass/fail comparison, grouped by the '{{GROUP_BY_ATTRIBUTE}}' launch attribute.",
+      "widgetType": "componentHealthCheck",
+      "filter": "Last 50 Launches",
+      "itemsCount": 100,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$executions$total",
+          "statistics$executions$passed",
+          "statistics$executions$failed"
+        ],
+        "itemsCount": 100,
+        "widgetOptions": {
+          "attributeKey": "{{GROUP_BY_ATTRIBUTE}}",
+          "viewMode": "panel"
+        }
+      }
+    },
+    {
+      "name": "Cross-Team Trend",
+      "description": "Aggregate pass/fail trend across all teams reporting into this umbrella project.",
+      "widgetType": "statisticTrend",
+      "filter": "Last 50 Launches",
+      "itemsCount": 30,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$executions$total",
+          "statistics$executions$passed",
+          "statistics$executions$failed",
+          "statistics$executions$skipped"
+        ],
+        "itemsCount": 30,
+        "widgetOptions": {
+          "timeline": "launch"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Pass/Fail Trends & Launch Health",
+  "description": "Cross-cutting view of recent launch health: overall stats, passing rate, trend over time, and a table of recent launches.",
+  "widgets": [
+    "Overall Statistics",
+    "Passing Rate Summary",
+    "Launch Statistics Trend",
+    "Recent Launches"
+  ]
+}

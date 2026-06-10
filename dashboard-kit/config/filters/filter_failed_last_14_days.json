@@ -1,0 +1,18 @@
+{
+  "_comment": "VERIFY before first run: 'statistics$executions$failed' as a filteringField with condition 'gt'/value '0' against POST /api/v1/{project}/filter on the target RP 5.15 instance. Recency is intentionally bounded by widget itemsCount (e.g. last 50 launches) rather than an absolute startTime range, since RP saved filters store literal values, not rolling 'last N days' windows. If the instance supports a relative startTime condition, add an entity such as {\"filteringField\": \"startTime\", \"condition\": \"between\", \"value\": \"now-14d,now\"} here and confirm it behaves as a rolling window.",
+  "name": "Launches With Failures (recent)",
+  "description": "Recent launches that contain at least one failed test, used to scope failure/defect breakdown widgets.",
+  "type": "Launch",
+  "entities": [
+    {
+      "filteringField": "statistics$executions$failed",
+      "condition": "gt",
+      "value": "0"
+    }
+  ],
+  "selectionParameters": {
+    "orders": [
+      { "sortingColumn": "startTime", "isAsc": false }
+    ]
+  }
+}

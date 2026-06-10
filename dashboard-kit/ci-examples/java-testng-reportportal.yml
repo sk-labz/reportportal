@@ -1,0 +1,57 @@
+# Example GitHub Actions workflow: report TestNG (Maven) results to ReportPortal.
+#
+# Prerequisites in the team's repo:
+#   - pom.xml depends on: com.epam.reportportal:agent-java-testng
+#   - testng.xml registers the ReportPortal listener, e.g.:
+#
+#       <suite name="UI Regression Suite">
+#         <listeners>
+#           <listener class-name="com.epam.reportportal.testng.ReportPortalTestNgListener"/>
+#         </listeners>
+#         ...
+#       </suite>
+#
+#     See https://github.com/reportportal/agent-java-testng
+#
+# Repo secrets required (see ../ATTRIBUTES.md):
+#   RP_ENDPOINT, RP_API_KEY, RP_PROJECT
+#
+# Copy this file to .github/workflows/reportportal-tests.yml in the team's
+# repo and adjust `RP_LAUNCH`, attribute values, and the build command.
+
+name: Tests with ReportPortal (TestNG)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ui-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # VERIFY: property names against the client-java/agent-java-testng
+      # version pinned in pom.xml (rp.api.key vs rp.uuid; rp.attributes format).
+      - name: Configure ReportPortal
+        run: |
+          mkdir -p src/test/resources
+          cat > src/test/resources/reportportal.properties <<EOF
+          rp.endpoint=${{ secrets.RP_ENDPOINT }}
+          rp.api.key=${{ secrets.RP_API_KEY }}
+          rp.project=${{ secrets.RP_PROJECT }}
+          rp.launch=UI Regression Suite
+          rp.attributes=team:checkout;layer:ui;service:checkout-web
+          rp.enable=true
+          rp.convertimage=true
+          EOF
+
+      - name: Run UI regression suite
+        run: mvn -B test -DsuiteXmlFile=testng.xml

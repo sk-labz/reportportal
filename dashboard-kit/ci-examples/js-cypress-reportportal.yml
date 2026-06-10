@@ -1,0 +1,65 @@
+# Example GitHub Actions workflow: report Cypress (UI/E2E) results to ReportPortal.
+#
+# Prerequisites in the team's repo:
+#   - package.json depends on `@reportportal/agent-js-cypress`
+#     https://github.com/reportportal/agent-js-cypress
+#   - cypress.config.js (or reporter config file) registers the reporter,
+#     reading config from env vars set below, e.g.:
+#
+#       module.exports = defineConfig({
+#         reporter: '@reportportal/agent-js-cypress',
+#         reporterOptions: {
+#           endpoint: process.env.RP_ENDPOINT,
+#           apiKey: process.env.RP_API_KEY,
+#           project: process.env.RP_PROJECT,
+#           launch: process.env.RP_LAUNCH,
+#           attributes: [
+#             { key: 'team', value: 'checkout' },
+#             { key: 'layer', value: 'ui' },
+#             { key: 'service', value: 'checkout-web' },
+#           ],
+#         },
+#         e2e: { /* ... */ },
+#       });
+#
+# VERIFY: the reporterOptions key names (`apiKey` vs `token`) and `attributes`
+# array shape against the @reportportal/agent-js-cypress version pinned in
+# package.json.
+#
+# Repo secrets required (see ../ATTRIBUTES.md):
+#   RP_ENDPOINT, RP_API_KEY, RP_PROJECT
+#
+# Copy this file to .github/workflows/reportportal-tests.yml in the team's
+# repo and adjust `RP_LAUNCH` and the attribute values in cypress.config.js.
+
+name: UI Regression with ReportPortal (Cypress)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      RP_ENDPOINT: ${{ secrets.RP_ENDPOINT }}
+      RP_API_KEY: ${{ secrets.RP_API_KEY }}
+      RP_PROJECT: ${{ secrets.RP_PROJECT }}
+      RP_LAUNCH: "Checkout - UI Regression"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run Cypress
+        uses: cypress-io/github-action@v6
+        with:
+          build: npm run build
+          start: npm run start
+          wait-on: "http://localhost:3000"

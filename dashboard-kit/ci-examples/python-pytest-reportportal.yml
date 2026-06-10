@@ -1,0 +1,52 @@
+# Example GitHub Actions workflow: report pytest results to ReportPortal.
+#
+# Prerequisites in the team's repo:
+#   - requirements include `pytest-reportportal`
+#     https://github.com/reportportal/agent-python-pytest
+#
+# Repo secrets required (see ../ATTRIBUTES.md):
+#   RP_ENDPOINT, RP_API_KEY, RP_PROJECT
+#
+# Copy this file to .github/workflows/reportportal-tests.yml in the team's
+# repo and adjust `rp_launch`, attribute values, and the test command.
+
+name: Tests with ReportPortal (pytest)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest-reportportal
+
+      # VERIFY: pytest-reportportal config keys against the version pinned
+      # above -- `rp_api_key` (newer) vs `rp_uuid` (older), and the
+      # `rp_launch_attributes` format (space-separated "key:value" pairs is
+      # the documented format at the time of writing).
+      - name: Configure ReportPortal
+        run: |
+          cat > pytest.ini <<EOF
+          [pytest]
+          rp_endpoint = ${{ secrets.RP_ENDPOINT }}
+          rp_api_key = ${{ secrets.RP_API_KEY }}
+          rp_project = ${{ secrets.RP_PROJECT }}
+          rp_launch = Search Service - Unit Tests
+          rp_launch_attributes = team:search layer:unit service:search-svc
+          rp_enabled = True
+          EOF
+
+      - name: Run unit tests
+        run: pytest --reportportal

@@ -1,0 +1,9 @@
+{
+  "name": "Failure & Defect Breakdown",
+  "description": "Where failures are concentrated: top failing tests, defect-type classification, and flaky tests needing investigation.",
+  "widgets": [
+    "Top Failed Test Cases",
+    "Defect Type Breakdown",
+    "Flaky Test Cases"
+  ]
+}

@@ -1,0 +1,60 @@
+# Example GitHub Actions workflow: report Jest results to ReportPortal.
+#
+# Prerequisites in the team's repo:
+#   - package.json depends on `@reportportal/agent-js-jest`
+#     https://github.com/reportportal/agent-js-jest
+#   - jest.config.js registers the reporter, reading config from env vars set
+#     below, e.g.:
+#
+#       reporters: [
+#         "default",
+#         ["@reportportal/agent-js-jest", {
+#           apiKey: process.env.RP_API_KEY,
+#           endpoint: process.env.RP_ENDPOINT,
+#           project: process.env.RP_PROJECT,
+#           launch: process.env.RP_LAUNCH,
+#           attributes: [
+#             { key: "team", value: "search" },
+#             { key: "layer", value: "unit" },
+#             { key: "service", value: "web-app" },
+#           ],
+#         }],
+#       ],
+#
+# VERIFY: the reporter option keys (`apiKey` vs `token`, `attributes` array
+# shape) against the @reportportal/agent-js-jest version pinned in
+# package.json.
+#
+# Repo secrets required (see ../ATTRIBUTES.md):
+#   RP_ENDPOINT, RP_API_KEY, RP_PROJECT
+#
+# Copy this file to .github/workflows/reportportal-tests.yml in the team's
+# repo and adjust `RP_LAUNCH` and the attribute values in jest.config.js.
+
+name: Tests with ReportPortal (Jest)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    env:
+      RP_ENDPOINT: ${{ secrets.RP_ENDPOINT }}
+      RP_API_KEY: ${{ secrets.RP_API_KEY }}
+      RP_PROJECT: ${{ secrets.RP_PROJECT }}
+      RP_LAUNCH: "Web App - Unit Tests"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run unit tests
+        run: npx jest --ci

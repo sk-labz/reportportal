@@ -1,0 +1,8 @@
+{
+  "name": "Org Quality Overview",
+  "description": "Cross-team rollup for stakeholders: team health comparison and aggregate trend across all teams reporting into this umbrella project.",
+  "widgets": [
+    "Team Health Overview",
+    "Cross-Team Trend"
+  ]
+}

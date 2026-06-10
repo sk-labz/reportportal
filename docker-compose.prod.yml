@@ -1,0 +1,211 @@
+# ReportPortal — Production overlay
+#
+# Applies on top of the base docker-compose.yml to make a single-VM deployment
+# production-usable:
+#   - Real TLS certificates from Let's Encrypt via Traefik (replacing the
+#     default self-signed cert), plus an HTTP -> HTTPS redirect.
+#   - The insecure Traefik dashboard (port 8081) is disabled/unpublished.
+#   - Per-service CPU/memory limits sized for a ~16GB / 4 vCPU host.
+#   - Backup guidance (see comments at the bottom and dashboard-kit/docs/SETUP_RUNBOOK.md).
+#
+# Usage:
+#   cp .env.production.example .env   # then edit secrets, RP_DOMAIN, ACME_EMAIL
+#   touch acme.json && chmod 600 acme.json
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile core up -d
+#
+# To validate the merged config before applying:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml config
+#
+# NOTE: Let's Encrypt enforces rate limits. While testing, point at the staging
+# CA first by adding this line to the gateway `command:` below, then removing it
+# once real certs are confirmed working:
+#   - --certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+
+services:
+  ## @section Gateway — TLS termination + HTTP->HTTPS redirect
+  ## `command` is a list-type field that Compose REPLACES wholesale, so the
+  ## full command is repeated here with the production additions included.
+  ## `ports`, by contrast, is MERGED/appended across files by Compose, so it
+  ## needs the `!override` tag below to actually drop port 8081. `labels`
+  ## (used on index/ui/api/uat/jobs below) normalize to a map and merge by
+  ## key, so only the new TLS-related label keys need to be added there.
+  gateway:
+    command:
+      - --providers.docker=true
+      - --providers.docker.constraints=Label(`traefik.expose`, `true`)
+      - --entrypoints.web.address=:8080
+      - --entrypoints.traefik.address=:8081
+      - --entrypoints.websecure.address=:443
+      ## Redirect all plain-HTTP traffic to HTTPS
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      ## TLS + Let's Encrypt (ACME) certificate resolver
+      - --entrypoints.websecure.http.tls=true
+      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      ## Traefik dashboard: keep enabled internally, but no longer exposed insecurely
+      - --api.dashboard=true
+      - --api.insecure=false
+    ## NOTE: Compose MERGES (appends to) `ports` lists across files by
+    ## default, so simply omitting the base file's "8080:8080"/"8081:8081"
+    ## entries here would NOT remove them. The `!override` tag (Compose
+    ## Specification, Docker Compose v2.24+) forces a full replacement
+    ## instead, so port 8081 (Traefik dashboard) is NOT published in
+    ## production. To access it, use `docker compose exec` + an SSH tunnel.
+    ports: !override
+      - "80:8080"   ## HTTP — ACME challenge + redirect to HTTPS
+      - "443:443"   ## HTTPS — ReportPortal UI/API
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./acme.json:/acme.json   ## Must exist with `chmod 600` before first start
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  ## @section Index service — adds TLS to its `-secure` router
+  index:
+    labels:
+      - "traefik.http.routers.index-secure.tls=true"
+      - "traefik.http.routers.index-secure.tls.certresolver=letsencrypt"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  ## @section UI service — adds TLS to its `-secure` router
+  ui:
+    labels:
+      - "traefik.http.routers.ui-secure.tls=true"
+      - "traefik.http.routers.ui-secure.tls.certresolver=letsencrypt"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  ## @section API service — adds TLS to its `-secure` router
+  api:
+    labels:
+      - "traefik.http.routers.api-secure.tls=true"
+      - "traefik.http.routers.api-secure.tls.certresolver=letsencrypt"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+
+  ## @section UAT (authorization) service — adds TLS to its `-secure` router
+  uat:
+    labels:
+      - "traefik.http.routers.uat-secure.tls=true"
+      - "traefik.http.routers.uat-secure.tls.certresolver=letsencrypt"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+  ## @section Jobs service — adds TLS to its `-secure` router
+  jobs:
+    labels:
+      - "traefik.http.routers.jobs-secure.tls=true"
+      - "traefik.http.routers.jobs-secure.tls.certresolver=letsencrypt"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+  ## @section Database / messaging / search — resource limits only
+  ## `environment`, `deploy`, etc. are mapping-type fields: Compose MERGES
+  ## these at the key level, so only the new/changed keys need to be listed.
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+
+  rabbitmq:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+  opensearch:
+    environment:
+      ## Bump heap from the 512m dev default now that the host has headroom.
+      OPENSEARCH_JAVA_OPTS: -Xms1g -Xmx1g
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+
+  migrations:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  analyzer:
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+
+## ---------------------------------------------------------------------------
+## Backup notes (run from the host; see dashboard-kit/docs/SETUP_RUNBOOK.md for
+## a ready-to-schedule cron example):
+##
+## Postgres (metadata, launches, results, dashboards):
+##   docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -F c \
+##     > backups/postgres-$(date +%F).dump
+##
+## Shared `storage` volume (attachments, plugins, analyzer models):
+##   docker run --rm \
+##     -v reportportal_storage:/data:ro \
+##     -v "$(pwd)/backups":/backup \
+##     alpine tar czf /backup/storage-$(date +%F).tgz -C / data
+##
+## Restore is the reverse: `pg_restore` into a fresh `postgres` volume, and
+## `tar xzf` the storage archive back into the `storage` volume.
+## ---------------------------------------------------------------------------

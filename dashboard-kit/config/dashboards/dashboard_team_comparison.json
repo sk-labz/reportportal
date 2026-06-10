@@ -1,0 +1,8 @@
+{
+  "name": "Team / Project Comparison",
+  "description": "Within-project comparison of test layers/services via launch attributes (team:/layer:/service:). Switch projects to compare across teams using the same layout.",
+  "widgets": [
+    "Recent Launches by Attribute",
+    "Component Health by Service"
+  ]
+}

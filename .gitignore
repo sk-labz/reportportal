@@ -3,3 +3,8 @@
 .vscode
 .env
 tmp/
+
+# dashboard-kit: company-internal project/team mapping (copy from
+# config/teams.example.yml)
+dashboard-kit/config/teams.yml
+acme.json

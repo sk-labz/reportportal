@@ -1,0 +1,86 @@
+{
+  "_comment": "Dashboard 1: Pass/Fail Trends & Launch Health. VERIFY widgetType enum values, contentParameters.contentFields tokens, and widgetOptions keys against GET /api/v1/{project}/widget on the target RP 5.15 instance before first run -- exact names (e.g. 'statisticTrend' vs 'cumulativeTrendChart', boolean vs string widgetOptions values) can shift between minor versions.",
+  "widgets": [
+    {
+      "name": "Overall Statistics",
+      "description": "Snapshot of pass/fail/skip totals across the latest launches.",
+      "widgetType": "overallStatistics",
+      "filter": "Last 50 Launches",
+      "itemsCount": 1,
+      "size": { "width": 6, "height": 7 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$executions$total",
+          "statistics$executions$passed",
+          "statistics$executions$failed",
+          "statistics$executions$skipped"
+        ],
+        "itemsCount": 1,
+        "widgetOptions": {
+          "viewMode": "panel",
+          "latest": true
+        }
+      }
+    },
+    {
+      "name": "Passing Rate Summary",
+      "description": "Single-number passing-rate gauge for the latest launches.",
+      "widgetType": "passingRateSummary",
+      "filter": "Last 50 Launches",
+      "itemsCount": 1,
+      "size": { "width": 6, "height": 7 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$executions$passed",
+          "statistics$executions$total"
+        ],
+        "itemsCount": 1,
+        "widgetOptions": {
+          "viewMode": "panel"
+        }
+      }
+    },
+    {
+      "name": "Launch Statistics Trend",
+      "description": "Pass/fail/skip counts trended across the last 30 launches.",
+      "widgetType": "statisticTrend",
+      "filter": "Last 50 Launches",
+      "itemsCount": 30,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "statistics$executions$total",
+          "statistics$executions$passed",
+          "statistics$executions$failed",
+          "statistics$executions$skipped"
+        ],
+        "itemsCount": 30,
+        "widgetOptions": {
+          "timeline": "launch"
+        }
+      }
+    },
+    {
+      "name": "Recent Launches",
+      "description": "Tabular view of the most recent launches and their result counts.",
+      "widgetType": "launchesTable",
+      "filter": "Last 50 Launches",
+      "itemsCount": 20,
+      "size": { "width": 12, "height": 9 },
+      "contentParameters": {
+        "contentFields": [
+          "name",
+          "number",
+          "startTime",
+          "status",
+          "statistics$executions$total",
+          "statistics$executions$passed",
+          "statistics$executions$failed",
+          "statistics$executions$skipped"
+        ],
+        "itemsCount": 20,
+        "widgetOptions": {}
+      }
+    }
+  ]
+}

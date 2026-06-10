@@ -1,0 +1,41 @@
+# dashboard-kit/config/teams.yml
+#
+# Drives multi-project provisioning. Copy this file to config/teams.yml and
+# edit it with your real ReportPortal project keys before running
+# provision_dashboards.py. config/teams.yml is git-ignored on purpose so
+# real project keys/structure can stay company-internal if desired.
+#
+# project keys must already exist in ReportPortal (Admin -> Projects -> Add
+# Project) before this script is run -- see dashboard-kit/docs/SETUP_RUNBOOK.md.
+#
+# modes:
+#   team     - provisions the 3 standard dashboards (Pass/Fail Trends,
+#              Failure & Defect Breakdown, Team/Project Comparison) into the
+#              project. This is the default for every team's own project.
+#   umbrella - additionally provisions the "Org Quality Overview" dashboard
+#              with a componentHealthCheck widget grouped by
+#              `group_by_attribute`. Use for an optional business-unit-level
+#              rollup project that teams also report into (see
+#              dashboard-kit/README.md "Umbrella projects").
+
+projects:
+  - key: payments_checkout
+    mode: team
+
+  - key: payments_fraud
+    mode: team
+
+  - key: platform_search
+    mode: team
+
+  # Optional: a business-unit rollup project. Teams listed under `teams:`
+  # are expected to additionally report launches into this project tagged
+  # with the attribute `team:<name>` (see ci-examples/ATTRIBUTES.md). For
+  # each team, a reusable "Team: <name>" filter is also provisioned for
+  # ad-hoc drill-down widgets.
+  - key: payments_overview
+    mode: umbrella
+    group_by_attribute: team
+    teams:
+      - checkout
+      - fraud
