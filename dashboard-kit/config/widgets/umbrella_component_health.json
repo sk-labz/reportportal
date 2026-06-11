@@ -1,5 +1,5 @@
 {
-  "_comment": "UMBRELLA PROJECTS ONLY (provisioned when a project's mode is 'umbrella' in config/teams.yml). {{GROUP_BY_ATTRIBUTE}} is substituted from that project's 'group_by_attribute' (e.g. 'team'). Requires teams to additionally report (or copy) launches into this project tagged per dashboard-kit/ci-examples/ATTRIBUTES.md. VERIFY widgetType/widgetOptions field names per the comments in team_project_comparison.json and overall_pass_fail_trends.json.",
+  "_comment": "UMBRELLA PROJECTS ONLY (provisioned when a project's mode is 'umbrella' in config/teams.yml). {{GROUP_BY_ATTRIBUTE}} is substituted from that project's 'group_by_attribute' (e.g. 'team'). Requires teams to additionally report (or copy) launches into this project tagged per dashboard-kit/ci-examples/ATTRIBUTES.md. CONFIRMED against a live RP 5.15.x instance: 'componentHealthCheck' requires widgetOptions.attributeKeys (an ARRAY), widgetOptions.minPassingRate (string percentage), and widgetOptions.excludeSkipped (string 'true'/'false') -- see team_project_comparison.json for details. 'statisticTrend' with 4 contentFields (incl. skipped) + widgetOptions.timeline='launch' is confirmed working.",
   "widgets": [
     {
       "name": "Team Health Overview",
@@ -16,8 +16,9 @@
         ],
         "itemsCount": 100,
         "widgetOptions": {
-          "attributeKey": "{{GROUP_BY_ATTRIBUTE}}",
-          "viewMode": "panel"
+          "attributeKeys": ["{{GROUP_BY_ATTRIBUTE}}"],
+          "minPassingRate": "80",
+          "excludeSkipped": "true"
         }
       }
     },

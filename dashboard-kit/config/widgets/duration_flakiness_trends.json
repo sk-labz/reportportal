@@ -1,5 +1,5 @@
 {
-  "_comment": "Extended dashboard: Duration & Flakiness Trends. VERIFY widgetType values 'launchesDurationChart' and 'casesTrend' (and their content fields) against GET /api/v1/{project}/widget on the target RP 5.15 instance -- these were not used in the Phase 1 dashboards and are based on RP's documented widget-type list, not a confirmed payload shape.",
+  "_comment": "Extended dashboard: Duration & Flakiness Trends. CONFIRMED against a live RP 5.15.x instance: 'launchesDurationChart' with contentFields ['startTime','endTime'] + widgetOptions.timeline='launch', and 'casesTrend' with exactly ONE contentFields entry (here 'statistics$executions$total'), are both accepted. 'flakyTestCases' requires widgetOptions.launchNameFilter (see failure_defect_breakdown.json comment) -- '%' (SQL LIKE wildcard) matches any launch name.",
   "widgets": [
     {
       "name": "Launch Duration Trend",
@@ -51,7 +51,9 @@
           "statistics$executions$passed"
         ],
         "itemsCount": 30,
-        "widgetOptions": {}
+        "widgetOptions": {
+          "launchNameFilter": "%"
+        }
       }
     }
   ]

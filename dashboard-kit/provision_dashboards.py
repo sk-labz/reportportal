@@ -6,12 +6,14 @@ config/teams.yml describing which projects to provision (see
 config/teams.example.yml), then creates or updates the corresponding
 filters/widgets/dashboards in ReportPortal via its REST API.
 
-IMPORTANT: Several field names below (filter `filteringField` tokens, widget
-`widgetType`/`widgetOptions` keys, list-endpoint response shapes, project
-create/lookup endpoints) are flagged as "VERIFY" in both this file and the
-JSON templates under config/. Confirm them against the target instance's
-Swagger UI (https://<RP_DOMAIN>/api/) for your ReportPortal version before
-relying on a non-dry-run execution. See dashboard-kit/README.md for details.
+This script (request/response shapes for filters, widgets, dashboards, and
+project creation) has been validated end-to-end against a live RP 5.15.x
+instance. A few data-level details remain environment-specific and are
+flagged as "VERIFY" inline: the `statistics$defects$<type>$total` sub-type
+tokens (Project Settings -> Defect Types is per-project configurable), and
+whether `compositeAttribute` filter conditions ("ex"/"has") behave as
+expected once real launches with attributes exist. See
+dashboard-kit/README.md for details.
 
 Usage:
     python3 provision_dashboards.py --dry-run
@@ -101,9 +103,10 @@ def render(obj, context):
 
 
 def extract_list(resp):
-    """RP list endpoints return either a bare array or {"content": [...]}.
+    """RP list endpoints return {"content": [...], "page": {...}}.
 
-    VERIFY which shape your instance uses for /filter, /widget, /dashboard.
+    `content` may hold objects (filters, dashboards) or plain strings
+    (/widget/names/all) -- both are returned as-is.
     """
     if resp is None:
         return []
@@ -157,11 +160,9 @@ class RPClient:
         return self._request("PUT", f"{self.base}{path}", **kwargs)
 
     def project_exists(self):
-        """VERIFY: best guess is GET {api_base}/project/{name} -> 200/404.
+        """CONFIRMED: GET {api_base}/project/{name} -> 200 (exists) / 404 (not found).
 
-        Some RP versions may instead require listing
-        GET {api_base}/project/list and searching client-side. This is a
-        read-only call and is performed even under --dry-run.
+        Read-only call, performed even under --dry-run.
         """
         url = f"{self.api_base}/project/{self.project}"
         resp = self.session.get(url, timeout=30)
@@ -172,12 +173,7 @@ class RPClient:
         raise RuntimeError(f"GET {url} -> {resp.status_code}: {resp.text[:500]}")
 
     def create_project(self, description=""):
-        """VERIFY: best-effort POST {api_base}/project request body.
-
-        Confirm `projectName`/`entryType`/`configuration` fields (and any
-        required organization context) against the target instance's
-        Swagger UI before relying on this in a non-dry-run.
-        """
+        """CONFIRMED: POST {api_base}/project with projectName/entryType/configuration.description -> 201 {"id": N}."""
         payload = {
             "projectName": self.project,
             "entryType": "INTERNAL",
@@ -198,19 +194,37 @@ def ensure_project_exists(client, create, description):
 
 
 def list_existing(client):
-    """--list-existing audit mode: print existing filters/widgets/dashboards.
+    """--list-existing audit mode: print existing filters/dashboards (with
+    their attached widgets) and known widget names.
 
     Read-only (uses client.get only); does not create or modify anything.
     Useful for sanity-checking a fresh provisioning run, and as a starting
     point for the future dashboard-cleanup tooling described in
     docs/PHASE2_ROADMAP.md.
+
+    NOTE: RP has no "list all widgets with IDs" endpoint
+    (GET /v1/{project}/widget is 405; /widget/names/all returns names only,
+    no IDs -- see the Dashboards section below for widget IDs).
     """
     print(f"\n=== Project '{client.project}': existing items ===")
-    for label, path in (("Filters", "/filter"), ("Widgets", "/widget"), ("Dashboards", "/dashboard")):
-        items = extract_list(client.get(path, params={"page.size": 300}))
-        print(f"  {label} ({len(items)}):")
-        for item in items:
-            print(f"    id={item.get('id')!s:<8} name={item.get('name')!r}")
+
+    filters = extract_list(client.get("/filter", params={"page.size": 300}))
+    print(f"  Filters ({len(filters)}):")
+    for f in filters:
+        print(f"    id={f.get('id')!s:<8} name={f.get('name')!r}")
+
+    dashboards = extract_list(client.get("/dashboard", params={"page.size": 300}))
+    print(f"  Dashboards ({len(dashboards)}):")
+    for db in dashboards:
+        print(f"    id={db.get('id')!s:<8} name={db.get('name')!r}")
+        details = client.get(f"/dashboard/{db['id']}") or {}
+        for w in details.get("widgets", []):
+            print(f"        widget id={w.get('widgetId')!s:<8} name={w.get('widgetName')!r} type={w.get('widgetType')}")
+
+    widget_names = extract_list(client.get("/widget/names/all", params={"page.size": 300}))
+    print(f"  Widget names known to project ({len(widget_names)}, IDs not exposed by this endpoint):")
+    for wn in widget_names:
+        print(f"    {wn!r}")
 
 
 def ensure_filter(client, filter_def, force):
@@ -232,75 +246,70 @@ def ensure_filter(client, filter_def, force):
     return f"DRYRUN-FILTER-{name}" if client.dry_run else result["id"]
 
 
-def ensure_widget(client, widget_def, filter_id, force):
-    """GET-by-name, then POST (create) or PUT (update if --force).
+def ensure_dashboard_with_widgets(client, dashboard_def, widget_defs, filter_ids, force):
+    """GET-or-create the dashboard, then create-or-reuse+attach each widget.
 
-    Returns (widget_id, size) where size is the {"width","height"} layout hint.
-    """
-    name = widget_def["name"]
-    size = widget_def.get("size", DEFAULT_WIDGET_SIZE)
-    payload = {
-        "name": name,
-        "description": widget_def.get("description", ""),
-        "widgetType": widget_def["widgetType"],
-        "filterIds": [filter_id],
-        "contentParameters": widget_def["contentParameters"],
-        "share": True,
-    }
-
-    existing = extract_list(client.get("/widget", params={"filter.eq.name": name, "page.size": 50}))
-    found = find_by_name(existing, name)
-
-    if found and not force:
-        print(f"  widget '{name}' exists (id={found.get('id')}) - reusing")
-        return found["id"], size
-    if found and force:
-        print(f"  widget '{name}' exists (id={found.get('id')}) - updating (--force)")
-        client.put(f"/widget/{found['id']}", json=payload)
-        return found["id"], size
-
-    print(f"  creating widget '{name}' ({widget_def['widgetType']})")
-    result = client.post("/widget", json=payload)
-    widget_id = f"DRYRUN-WIDGET-{name}" if client.dry_run else result["id"]
-    return widget_id, size
-
-
-def ensure_dashboard(client, dashboard_def, widgets):
-    """GET-by-name, then POST (create) the dashboard, then PUT/add any missing widgets.
-
-    `widgets` is a list of (widget_id, size) tuples in display order. Existing
-    widgets already attached to the dashboard are left untouched (idempotent);
-    new ones are appended in a 12-column grid, stacking rows as needed.
+    Widget identity/reuse is determined by what's already attached to THIS
+    dashboard (matched by `widgetName`) -- RP has no "get widget id by name"
+    endpoint outside of a dashboard's widget list (GET /v1/{project}/widget
+    is 405; /widget/names/all returns names only, without IDs). New widgets
+    are created and appended in a 12-column grid, stacking rows as needed,
+    starting below any existing widgets.
     """
     name = dashboard_def["name"]
-    existing = extract_list(client.get("/dashboard", params={"page.size": 100}))
+    existing = extract_list(client.get("/dashboard", params={"filter.eq.name": name, "page.size": 50}))
     found = find_by_name(existing, name)
 
     if found:
         dashboard_id = found["id"]
         print(f"  dashboard '{name}' exists (id={dashboard_id}) - reusing")
         details = client.get(f"/dashboard/{dashboard_id}") or {}
-        existing_widget_ids = {w.get("widgetId") for w in details.get("widgets", [])}
-        cursor_y = max(
-            (w.get("widgetPosition", {}).get("positionY", 0) + w.get("widgetSize", {}).get("height", 0)
-             for w in details.get("widgets", [])),
-            default=0,
-        )
+        existing_widgets = details.get("widgets", [])
     else:
         print(f"  creating dashboard '{name}'")
-        result = client.post(
-            "/dashboard",
-            json={"name": name, "description": dashboard_def.get("description", ""), "share": True},
-        )
+        result = client.post("/dashboard", json={"name": name, "description": dashboard_def.get("description", "")})
         dashboard_id = f"DRYRUN-DASHBOARD-{name}" if client.dry_run else result["id"]
-        existing_widget_ids = set()
-        cursor_y = 0
+        existing_widgets = []
 
+    existing_by_name = {w.get("widgetName"): w for w in existing_widgets}
+    cursor_y = max(
+        (w.get("widgetPosition", {}).get("positionY", 0) + w.get("widgetSize", {}).get("height", 0)
+         for w in existing_widgets),
+        default=0,
+    )
     cursor_x, row_height = 0, 0
-    for widget_id, size in widgets:
-        if widget_id in existing_widget_ids:
-            print(f"    widget {widget_id} already on dashboard - skipping add")
+
+    for wdef in widget_defs:
+        wname = wdef["name"]
+        size = wdef.get("size", DEFAULT_WIDGET_SIZE)
+        filter_id = filter_ids.get(wdef["filter"])
+        if filter_id is None:
+            raise KeyError(
+                f"Widget '{wname}' references unregistered filter '{wdef['filter']}' "
+                f"-- add it to FILTER_FILES (or BUILD_FILTER_FILE) in provision_dashboards.py"
+            )
+        payload = {
+            "name": wname,
+            "description": wdef.get("description", ""),
+            "widgetType": wdef["widgetType"],
+            "filterIds": [filter_id],
+            "contentParameters": wdef["contentParameters"],
+        }
+
+        existing_widget = existing_by_name.get(wname)
+        if existing_widget:
+            widget_id = existing_widget["widgetId"]
+            if force:
+                print(f"    widget '{wname}' on dashboard (id={widget_id}) - updating (--force)")
+                client.put(f"/widget/{widget_id}", json=payload)
+            else:
+                print(f"    widget '{wname}' already on dashboard (id={widget_id}) - reusing")
             continue
+
+        print(f"    creating widget '{wname}' ({wdef['widgetType']})")
+        result = client.post("/widget", json=payload)
+        widget_id = f"DRYRUN-WIDGET-{wname}" if client.dry_run else result["id"]
+
         width = size.get("width", DEFAULT_WIDGET_SIZE["width"])
         height = size.get("height", DEFAULT_WIDGET_SIZE["height"])
         if cursor_x + width > 12:
@@ -355,18 +364,7 @@ def provision_project(client, mode, group_by_attribute, team_names, extended_das
     for dashboard_path, widgets_path in dashboard_groups:
         ddef = strip_comments(load_json(dashboard_path))
         wdefs = render(strip_comments(load_json(widgets_path))["widgets"], context)
-
-        widgets = []
-        for wdef in wdefs:
-            filter_id = filter_ids.get(wdef["filter"])
-            if filter_id is None:
-                raise KeyError(
-                    f"Widget '{wdef['name']}' references unregistered filter '{wdef['filter']}' "
-                    f"-- add it to FILTER_FILES (or BUILD_FILTER_FILE) in provision_dashboards.py"
-                )
-            widgets.append(ensure_widget(client, wdef, filter_id, force))
-
-        ensure_dashboard(client, ddef, widgets)
+        ensure_dashboard_with_widgets(client, ddef, wdefs, filter_ids, force)
 
 
 def load_projects(teams_config_path):
@@ -404,7 +402,7 @@ def main():
     parser.add_argument("--project-description", default="",
                          help="Description used when --create-project creates a new project")
     parser.add_argument("--list-existing", action="store_true",
-                         help="Read-only audit: list existing filters/widgets/dashboards per project and exit "
+                         help="Read-only audit: list existing filters/dashboards/widgets per project and exit "
                               "(no create/update calls are made)")
     parser.add_argument("--dry-run", action="store_true",
                          help="Print the create/update calls that would be made, without sending POST/PUT/DELETE requests. "

@@ -1,5 +1,5 @@
 {
-  "_comment": "Extended dashboard: Test Layer Breakdown. Groups results by the 'layer' launch attribute (api/ui/integration/unit) -- see ci-examples/ATTRIBUTES.md. VERIFY 'componentHealthCheck' widgetType/widgetOptions per the comments in team_project_comparison.json.",
+  "_comment": "Extended dashboard: Test Layer Breakdown. Groups results by the 'layer' launch attribute (api/ui/integration/unit) -- see ci-examples/ATTRIBUTES.md. CONFIRMED against a live RP 5.15.x instance: 'componentHealthCheck' requires widgetOptions.attributeKeys (an ARRAY), widgetOptions.minPassingRate (string percentage), and widgetOptions.excludeSkipped (string 'true'/'false') -- see team_project_comparison.json for details.",
   "widgets": [
     {
       "name": "Test Layer Health",
@@ -16,8 +16,9 @@
         ],
         "itemsCount": 50,
         "widgetOptions": {
-          "attributeKey": "layer",
-          "viewMode": "panel"
+          "attributeKeys": ["layer"],
+          "minPassingRate": "80",
+          "excludeSkipped": "true"
         }
       }
     },

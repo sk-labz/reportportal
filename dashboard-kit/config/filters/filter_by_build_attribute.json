@@ -1,19 +1,16 @@
 {
-  "_comment": "EXTENDED DASHBOARDS ONLY (Release / Sprint Report). VERIFY before first run: the 'ex' (attribute key exists, regardless of value) condition for 'compositeAttribute' against POST /api/v1/{project}/filter on the target RP 5.15 instance -- if 'ex' isn't a supported condition, an alternative is 'has' with a wildcard-style value, or omitting this entity and instead relying on itemsCount alone. {{BUILD_ATTRIBUTE_KEY}} is substituted by provision_dashboards.py from each project's optional 'build_attribute_key' (default 'version') -- see config/teams.example.yml and ci-examples/ATTRIBUTES.md.",
+  "_comment": "EXTENDED DASHBOARDS ONLY (Release / Sprint Report). CONFIRMED against a live RP 5.15.x instance: top-level 'conditions'/'orders' (UpdateUserFilterRQ), and 'compositeAttribute' + 'ex' + '<key>' (attribute key exists, regardless of value) is accepted. {{BUILD_ATTRIBUTE_KEY}} is substituted by provision_dashboards.py from each project's optional 'build_attribute_key' (default 'version') -- see config/teams.example.yml and ci-examples/ATTRIBUTES.md. Recency for the widgets that use this filter is bounded by their itemsCount (10).",
   "name": "Recent Releases ({{BUILD_ATTRIBUTE_KEY}})",
-  "description": "Most recent launches tagged with a '{{BUILD_ATTRIBUTE_KEY}}' attribute, used to scope Release/Sprint Report comparison widgets.",
+  "description": "Launches tagged with a '{{BUILD_ATTRIBUTE_KEY}}' attribute, used to scope Release/Sprint Report comparison widgets.",
   "type": "Launch",
-  "entities": [
+  "conditions": [
     {
       "filteringField": "compositeAttribute",
       "condition": "ex",
       "value": "{{BUILD_ATTRIBUTE_KEY}}"
     }
   ],
-  "selectionParameters": {
-    "orders": [
-      { "sortingColumn": "startTime", "isAsc": false }
-    ],
-    "launchesLimit": 10
-  }
+  "orders": [
+    { "sortingColumn": "startTime", "isAsc": false }
+  ]
 }

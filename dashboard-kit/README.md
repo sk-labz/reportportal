@@ -120,42 +120,60 @@ The script is safe to re-run:
 referenced by the templates — that's intentionally left for the Phase 2
 cleanup tooling described in `docs/PHASE2_ROADMAP.md`.
 
-## ⚠️ Before your first non-dry-run execution: VERIFY field names
+## ✅ Verified end-to-end against a live RP 5.15.x sandbox
 
-This kit was written against the ReportPortal **v1 REST API for the 5.15.x
-line** (matching the image tags pinned in `.env.production.example`), based on
-documented widget types and conventional payload shapes. RP's REST contracts
-can shift slightly between minor versions, and a few fields are
-project-configurable. Every JSON template under `config/` carries a
-`"_comment"` field (stripped automatically before being sent) flagging exactly
-what to check. In summary, before relying on a real run:
+The full flow below has been run against a live ReportPortal 5.15.x instance
+(filters → widgets → dashboards → real seeded launch data, for both `team`
+and `umbrella` modes, plus `--list-existing`, `--create-project`, idempotent
+re-runs, and `--no-extended-dashboards`/`--build-attribute-key` overrides).
+Along the way several payload shapes that were originally guessed turned out
+to differ from what's documented; the templates and script in this kit
+already reflect the corrected, confirmed shapes:
 
-1. Open `https://<RP_DOMAIN>/api/` (Swagger/OpenAPI UI) on your instance.
-2. Confirm the `Filter` controller's create/list endpoints accept the
-   `entities[].filteringField` / `condition` / `value` shapes used in
-   `config/filters/*.json` (especially the `compositeAttribute` /
-   `statistics$executions$failed` tokens).
-3. Confirm the `Widget` controller's `widgetType` enum includes
-   `overallStatistics`, `passingRateSummary`, `statisticTrend`,
-   `launchesTable`, `mostFailedTestCases`, `uniqueBugTable`,
-   `flakyTestCases`, `componentHealthCheck`, `cumulative`,
-   `launchesComparisonChart`, `launchesDurationChart`, and `casesTrend`
-   (the last four are used by the Phase 2 extended dashboards), and that
-   `contentParameters.widgetOptions` accepts the keys used in
-   `config/widgets/*.json` (`viewMode`, `latest`, `timeline`, `attributeKey`,
-   `attributeKeys`).
-4. Confirm `statistics$defects$<type>$total` sub-type keys
-   (`product_bug`/`automation_bug`/`system_issue`/`no_defect`/
-   `to_investigate`) match your project's defect-type configuration
-   (Project Settings → Defect Types) — these are customizable per project.
-5. If using `--create-project` / `create: true`, confirm the project
-   existence-check and creation endpoints/payload (`RPClient.project_exists`
-   / `RPClient.create_project`) against the `Project` controller.
-6. If using `configure_bts_jira.py` (see `docs/JIRA_INTEGRATION.md`), confirm
-   the `Integration` controller's path/payload for BTS plugins.
+- **Filters** (`POST /v1/{project}/filter`) use top-level `conditions`/`orders`
+  (not `entities`/`selectionParameters`). The "match everything" filter uses
+  `{"filteringField": "name", "condition": "ne", "value": "__no_such_launch_name__"}`
+  (RP rejects empty condition values).
+- **Widget existence checks**: `GET /v1/{project}/widget` is `405`, and
+  `/widget/names/all` returns names without IDs — so `provision_dashboards.py`
+  determines widget reuse from the **dashboard's own widget list**
+  (`GET /v1/{project}/dashboard/{id}` → `widgets[].widgetId`/`widgetName`),
+  not a standalone widget registry.
+- `mostFailedTestCases` is **not** a valid `widgetType` — use `topTestCases`.
+- `topTestCases` and `casesTrend` require **exactly one** `contentFields` entry.
+- `topTestCases` and `flakyTestCases` require `widgetOptions.launchNameFilter`
+  (`"%"` is accepted at creation time as a wildcard, but returned **empty
+  content** in this sandbox — a real launch name returned real data; teams
+  may need to edit this in the UI to one of their actual launch names).
+- `componentHealthCheck` requires `widgetOptions.attributeKeys` (an **array**,
+  not singular `attributeKey`), plus `minPassingRate` (string percentage) and
+  `excludeSkipped` (string `"true"`/`"false"`). Its content is fetched via
+  `GET /v1/{project}/widget/multilevel/{id}`, not `/widget/{id}` — confirmed
+  working with real per-attribute-value pass rates.
+- `launchesComparisonChart` needs `widgetOptions.attributeKeys` set, or
+  content-loading throws a server-side SQL error (creation still succeeds
+  either way).
+- **Project create/lookup** (`POST /v1/project`, `GET /v1/project/{name}` →
+  200/404) work exactly as implemented in `RPClient`.
 
-If a `--dry-run` GET or a real run returns a 4xx, the script prints the
-response body verbatim — use that to correct the relevant template under
+### Known remaining gaps
+
+- `cumulative` widgets create successfully but returned **empty content** via
+  both `/widget/{id}` and `/widget/multilevel/{id}` in this sandbox — the RP
+  UI dashboard view may use parameters not exercised here. If "Cumulative
+  Release Trend" renders empty for you too, this is a known gap.
+- **`--force` on an existing `launchesComparisonChart` widget corrupted it**
+  (`widgetType`/`contentParameters` became `null`) in this sandbox. Avoid
+  `--force` for that widget; a fresh (non-`--force`) run creates it correctly.
+  If one gets into a bad state, delete/recreate it via the RP UI.
+- `statistics$defects$<type>$total` sub-type tokens
+  (`product_bug`/`automation_bug`/`system_issue`/`no_defect`/`to_investigate`)
+  are accepted at widget-creation time, but their data correctness depends on
+  your project's Defect Types configuration (Project Settings → Defect Types)
+  — confirm once real failed/triaged items exist.
+
+If a `--dry-run` GET or a real run returns a 4xx/5xx, the script prints the
+response body verbatim — use that to adjust the relevant template under
 `config/`.
 
 ## Layout
@@ -168,6 +186,8 @@ docker-compose.sso.yml      # SAML SP entity ID overlay (see docs/SSO_SETUP.md)
 dashboard-kit/
   provision_dashboards.py   # the script described above
   configure_bts_jira.py     # optional Jira integration automation (see docs/JIRA_INTEGRATION.md)
+  scripts/
+    seed_demo_data.py        # dev/demo only: seed sample launches into a project for trying out the dashboards
   requirements.txt
   config/
     teams.example.yml       # copy to teams.yml and edit

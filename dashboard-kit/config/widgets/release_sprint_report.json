@@ -1,5 +1,5 @@
 {
-  "_comment": "Extended dashboard: Release / Sprint Report. All widgets are scoped to the 'Recent Releases ({{BUILD_ATTRIBUTE_KEY}})' filter (see filters/filter_by_build_attribute.json), i.e. the last 10 launches that carry a '{{BUILD_ATTRIBUTE_KEY}}' attribute (default key: 'version'). VERIFY widgetType values 'cumulative' and 'launchesComparisonChart' (and their widgetOptions, e.g. grouping/labeling by attribute) against GET /api/v1/{project}/widget on the target RP 5.15 instance -- these were not used in the Phase 1 dashboards and are based on RP's documented widget-type list, not a confirmed payload shape.",
+  "_comment": "Extended dashboard: Release / Sprint Report. All widgets are scoped to the 'Recent Releases ({{BUILD_ATTRIBUTE_KEY}})' filter (see filters/filter_by_build_attribute.json), i.e. launches that carry a '{{BUILD_ATTRIBUTE_KEY}}' attribute. CONFIRMED against a live RP 5.15.x instance: a FRESH POST /v1/{project}/widget for 'launchesComparisonChart' with widgetOptions.attributeKeys=['version'] creates a widget that returns real per-launch comparison data via GET /v1/{project}/widget/{id} (without attributeKeys it 201s but content-loading throws a server-side SQL error). 'cumulative' also creates successfully with attributeKeys, but returned empty content via both /widget/{id} and /widget/multilevel/{id} in this sandbox -- the RP UI dashboard view may use additional parameters not exercised here. KNOWN ISSUE: PUT /v1/{project}/widget/{id} (the --force update path) on an existing 'launchesComparisonChart' widget corrupted it (widgetType/contentParameters became null, content-loading then 500s) in this sandbox -- avoid --force on this widget; if it ever needs changing, delete and let a fresh run recreate it, or edit via the RP UI.",
   "widgets": [
     {
       "name": "Release Passing Rate",
@@ -73,7 +73,9 @@
           "statistics$executions$skipped"
         ],
         "itemsCount": 10,
-        "widgetOptions": {}
+        "widgetOptions": {
+          "attributeKeys": ["{{BUILD_ATTRIBUTE_KEY}}"]
+        }
       }
     }
   ]

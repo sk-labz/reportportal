@@ -1,5 +1,5 @@
 {
-  "_comment": "Dashboard 3: Per-Team/Project Comparison (within a single project). VERIFY 'componentHealthCheck' widgetType and its 'widgetOptions.attributeKey' field name against GET /api/v1/{project}/widget on the target RP 5.15 instance. This widget groups results by the CI-supplied launch attribute named here (default: 'service') -- see dashboard-kit/ci-examples/ATTRIBUTES.md for the tagging convention (team:/layer:/service:). Swap attributeKey to 'layer' or 'team' if a project prefers grouping by test layer or by sub-team instead of service.",
+  "_comment": "Dashboard 3: Per-Team/Project Comparison (within a single project). CONFIRMED against a live RP 5.15.x instance: 'componentHealthCheck' requires widgetOptions.attributeKeys (an ARRAY, not singular 'attributeKey'), widgetOptions.minPassingRate (string percentage, e.g. '80'), and widgetOptions.excludeSkipped (string 'true'/'false') -- RP rejects creation with 'No keys were specified' / 'Minimum passing rate option was not specified' / 'Exclude skipped tests option was not specified' otherwise. This widget groups results by the CI-supplied launch attribute named here (default: 'service') -- see dashboard-kit/ci-examples/ATTRIBUTES.md for the tagging convention (team:/layer:/service:). Swap to 'layer' or 'team' if a project prefers grouping by test layer or by sub-team instead of service.",
   "widgets": [
     {
       "name": "Recent Launches by Attribute",
@@ -38,8 +38,9 @@
         ],
         "itemsCount": 50,
         "widgetOptions": {
-          "attributeKey": "service",
-          "viewMode": "panel"
+          "attributeKeys": ["service"],
+          "minPassingRate": "80",
+          "excludeSkipped": "true"
         }
       }
     }

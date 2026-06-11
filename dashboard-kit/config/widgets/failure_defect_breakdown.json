@@ -1,21 +1,21 @@
 {
-  "_comment": "Dashboard 2: Failure & Defect Breakdown. VERIFY widgetType enum values (especially 'mostFailedTestCases' vs 'topTestCases', and 'flakyTestCases') and the 'statistics$defects$<type>$total' content field tokens (defect type locators -- product_bug/automation_bug/system_issue/no_defect/to_investigate -- are project-configurable, so confirm the exact sub-type keys via GET /api/v1/{project}/settings) against the target RP 5.15 instance before first run.",
+  "_comment": "Dashboard 2: Failure & Defect Breakdown. CONFIRMED against a live RP 5.15.x instance: 'mostFailedTestCases' is NOT a valid widgetType -- use 'topTestCases'. Both 'topTestCases' and 'flakyTestCases' require widgetOptions.launchNameFilter (RP rejects creation otherwise with 'launchNameFilter should be specified for widget'); '%' (SQL LIKE wildcard) IS ACCEPTED at creation time, but in this sandbox returned EMPTY content (a specific launch name, e.g. 'Checkout API Tests', returned real per-test-case data). Until '%' is confirmed to populate, treat 'Top Failed Test Cases' as created-but-possibly-empty until a team edits launchNameFilter to one of their real launch names via the RP UI. 'topTestCases' additionally requires exactly ONE contentFields entry ('Only one content field could be specified'). 'uniqueBugTable' accepts the 'statistics$defects$<type>$total' fields shown below at creation time, but the exact sub-type tokens are project-configurable (Project Settings -> Defect Types; this sandbox's defaults are locators nd001/ti001/ab001/pb001/si001 for no_defect/to_investigate/automation_bug/product_bug/system_issue) -- confirm the data actually populates once failed items with defect types exist.",
   "widgets": [
     {
       "name": "Top Failed Test Cases",
       "description": "Test cases that fail most often across recent launches with failures.",
-      "widgetType": "mostFailedTestCases",
+      "widgetType": "topTestCases",
       "filter": "Launches With Failures (recent)",
       "itemsCount": 10,
       "size": { "width": 12, "height": 9 },
       "contentParameters": {
         "contentFields": [
-          "name",
-          "statistics$executions$total",
           "statistics$executions$failed"
         ],
         "itemsCount": 10,
-        "widgetOptions": {}
+        "widgetOptions": {
+          "launchNameFilter": "%"
+        }
       }
     },
     {
@@ -52,7 +52,9 @@
           "statistics$executions$passed"
         ],
         "itemsCount": 10,
-        "widgetOptions": {}
+        "widgetOptions": {
+          "launchNameFilter": "%"
+        }
       }
     }
   ]

@@ -10,3 +10,7 @@ tmp/
 dashboard-kit/config/teams.yml
 dashboard-kit/config/jira.yml
 acme.json
+docker-compose.sandbox.yml
+dashboard-kit/.venv/
+__pycache__/
+*.pyc
